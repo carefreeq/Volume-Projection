@@ -2,7 +2,7 @@
 {
 	Properties
 	{
-		_ProjectionPower("ProjectionPower",Range(0,1)) = .5
+		_ProjectionEdge("ProjectionEdge",Range(0,10)) = 4
 		_ProjectionLength("ProjectionLength",Range(0,100)) = 10
 		_ProjectionFadeout("Fadeout distance",float) = 5
 	}
@@ -18,14 +18,22 @@
 		#include "UnityCG.cginc"  
 		#include "Porjection.cginc"
 		uniform float4 _LightColor0;
-		uniform float _ProjectionPower;
-
+		uniform float _ProjectionEdge;
 		fixed4 lfrag(v2f i) : SV_Target
 		{
 			fixed4 col = _LightColor0;
-			float NdotL = dot(i.normal, normalize(UnityWorldSpaceLightDir(i.wPos)));
-			col.a = min(_ProjectionPower,(pow(1.1 - abs(NdotL), 8)));
-			col.a *= pow(min(distance(_WorldSpaceCameraPos.xyz, i.wPos), _ProjectionFadeout) / _ProjectionFadeout,3);
+			float3 lDir = normalize(UnityWorldSpaceLightDir(i.wPos));
+			float NdotL = dot(i.normal, lDir);
+			col.a = min(1,(pow(1 + NdotL, 8)));
+
+			float3 vDir = normalize(UnityWorldSpaceLightDir(_WorldSpaceCameraPos.xyz));
+			float3 NcrossL = cross(i.normal,lDir);
+			float3 VcrossL = cross(vDir,lDir);
+			float NLdotVL = dot(NcrossL, VcrossL);
+			float VdotL = dot(vDir,lDir);
+			col.a *= pow(max(abs(NLdotVL), pow(VdotL,4)),_ProjectionEdge);
+
+			col.a *= pow(min(distance(_WorldSpaceCameraPos.xyz, i.wPos), _ProjectionFadeout) / _ProjectionFadeout, 3);
 			return col;
 		}
 		ENDCG
